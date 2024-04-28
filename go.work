@@ -1,0 +1,9 @@
+go 1.22.2
+
+use (
+	./02-async/01-goroutines
+	./03-message-broker/02-publishing-messages
+	./03-message-broker/03-subscribing
+	./03-message-broker/04-nack
+	./project
+)
