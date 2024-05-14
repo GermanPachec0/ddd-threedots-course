@@ -1,0 +1,4 @@
+{
+    "go.lintOnSave": "file",
+    "go.lintTool": "golangci-lint"
+}

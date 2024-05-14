@@ -5,5 +5,11 @@ use (
 	./03-message-broker/02-publishing-messages
 	./03-message-broker/03-subscribing
 	./03-message-broker/04-nack
+	./03-message-broker/05-consumer-groups
+	./04-router/01-handlers
+	./04-router/02-no-publisher-handlers
+	./05-events/02-marshalling
+	./05-events/03-headers
+	./06-middlewares/01-add-middleware
 	./project
 )

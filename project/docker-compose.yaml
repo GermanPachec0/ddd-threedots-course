@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  gateway:
+    image: ghcr.io/threedotslabs/event-driven-gateway:latest
+    ports:
+      - "8888:8080"
+    environment:
+      SOLUTION_BASE_URL: "http://host.docker.internal:8080/"
+
+    # this allows webhooks from Gateway to call your solution on Linux
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - "6379:6379"
