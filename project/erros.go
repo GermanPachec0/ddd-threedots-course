@@ -1,9 +1,11 @@
 package main
 
+import "errors"
+
 type MissingInvoiceNumber struct{}
 
-func (m MissingInvoiceNumber) Error() string {
-	return "missing the invoice number - can't continue"
+func (m MissingInvoiceNumber) Error() error {
+	return errors.New("Ticket Not found")
 }
 
 func (m MissingInvoiceNumber) IsPermanent() bool {

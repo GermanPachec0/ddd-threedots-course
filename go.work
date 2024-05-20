@@ -11,5 +11,6 @@ use (
 	./05-events/02-marshalling
 	./05-events/03-headers
 	./06-middlewares/01-add-middleware
+	./08-component-testing/03-writing-mocks
 	./project
 )
