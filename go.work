@@ -12,5 +12,11 @@ use (
 	./05-events/03-headers
 	./06-middlewares/01-add-middleware
 	./08-component-testing/03-writing-mocks
+	./09-cqrs-events/01-event-bus
+	./09-cqrs-events/02-custom-event-name
+	./09-cqrs-events/03-handling-correlation-id
+	./09-cqrs-events/04-event-processor
+	./09-cqrs-events/05-event-handler
+	./09-cqrs-events/06-cqrs-with-consumer-groups
 	./project
 )

@@ -67,10 +67,6 @@ func (h *Handler) HandleTicketCancel(msg *message.Message) error {
 		return nil
 	}
 
-	if msg.Metadata.Get("type") != "TicketBookingConfirmed" {
-		return nil
-	}
-
 	var ticket ticket.Ticket
 
 	err := json.Unmarshal(msg.Payload, &ticket)
