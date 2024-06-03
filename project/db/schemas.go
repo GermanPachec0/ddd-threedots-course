@@ -1,0 +1,27 @@
+package db
+
+var schema = `
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS tickets (
+	ticket_id UUID PRIMARY KEY,
+	price_amount NUMERIC(10, 2) NOT NULL,
+	price_currency CHAR(3) NOT NULL,
+	customer_email VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE shows (
+    show_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    dead_nation_id UUID NOT NULL,
+    number_of_tickets INT NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    venue VARCHAR(255) NOT NULL
+);
+CREATE TABLE bookings (
+	booking_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    show_id UUID,
+    number_of_tickets INT NOT NULL,
+    customer_email VARCHAR(255) NOT NULL
+);
+`

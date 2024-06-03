@@ -5,42 +5,53 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"tickets/adapters/rds"
-	"tickets/events"
-	"tickets/pkg/receipts"
-	"tickets/pkg/sheets"
+	"tickets/api"
+	"tickets/db"
+	"tickets/message"
+	"tickets/service"
 
 	"github.com/ThreeDotsLabs/go-event-driven/common/clients"
 	"github.com/ThreeDotsLabs/go-event-driven/common/log"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	log.Init(logrus.InfoLevel)
-
-	rdb := rds.NewRedisClient(os.Getenv("REDIS_ADDR"))
-	clients, err := clients.NewClients(os.Getenv("GATEWAY_ADDR"), func(ctx context.Context, req *http.Request) error {
-		req.Header.Set("Correlation-ID", log.CorrelationIDFromContext(ctx))
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	spreedSheetSVC := sheets.NewSpreadsheetsClient(clients)
-	receiptSVC := receipts.NewReceiptsClient(clients)
-
-	router, err := events.NewRouter(rdb, receiptSVC, spreedSheetSVC)
-	if err != nil {
-		panic(err)
-	}
-
-	ctx := context.Background()
-	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
-
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	err = router.Run(ctx)
+	database, err := db.NewDBConn(os.Getenv("POSTGRES_URL"))
+	if err != nil {
+		panic(err)
+	}
+	database.MigrateSchema()
+	defer database.Close()
+
+	apiClients, err := clients.NewClients(
+		os.Getenv("GATEWAY_ADDR"),
+		func(ctx context.Context, req *http.Request) error {
+			req.Header.Set("Correlation-ID", log.CorrelationIDFromContext(ctx))
+			return nil
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	redisClient := message.NewRedisClient(os.Getenv("REDIS_ADDR"))
+	defer redisClient.Close()
+
+	spreadsheetsService := api.NewSpreadsheetsAPIClient(apiClients)
+	receiptsService := api.NewReceiptsServiceClient(apiClients)
+	fileService := api.NewFileServiceClient(apiClients)
+	deadNotionService := api.NewDeadNotionClient(apiClients)
+
+	err = service.New(
+		redisClient,
+		spreadsheetsService,
+		receiptsService,
+		fileService,
+		database,
+		deadNotionService,
+	).Run(ctx)
 	if err != nil {
 		panic(err)
 	}

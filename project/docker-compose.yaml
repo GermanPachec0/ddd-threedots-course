@@ -16,3 +16,12 @@ services:
     image: redis:6.2-alpine
     ports:
       - "6379:6379"
+
+  postgres:
+    image: postgres:15.2-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db
+    ports:
+      - "5432:5432"

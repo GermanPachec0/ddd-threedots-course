@@ -18,5 +18,10 @@ use (
 	./09-cqrs-events/04-event-processor
 	./09-cqrs-events/05-event-handler
 	./09-cqrs-events/06-cqrs-with-consumer-groups
+	./11-outbox/04-publishing-event-in-transaction
+	./11-outbox/05-subscribing-from-sql
+	./11-outbox/06-publishing-event-for-forwarder
+	./11-outbox/07-forwarding-with-outbox
+	./12-cqrs-commands/01-command-vs-event
 	./project
 )

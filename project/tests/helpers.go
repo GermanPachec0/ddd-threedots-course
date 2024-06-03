@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
 	"github.com/lithammer/shortuuid/v3"
 	"github.com/stretchr/testify/require"
 )
@@ -49,6 +51,7 @@ func sendTicketsStatus(t *testing.T, req TicketsStatusRequest) {
 
 	httpReq.Header.Set("Correlation-ID", correlationID)
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Idempotency-Key", uuid.NewString())
 
 	resp, err := http.DefaultClient.Do(httpReq)
 	require.NoError(t, err)

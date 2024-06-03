@@ -1,44 +1,55 @@
-package tests
+package tests_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"testing"
-	"tickets/events"
-	"tickets/pkg/receipts"
-	"tickets/pkg/sheets"
+	"tickets/api"
+	"tickets/db"
+	"tickets/entities"
+	"tickets/message"
+	"tickets/service"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
+	"github.com/lithammer/shortuuid/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestComponent(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{
-		Addr: os.Getenv("REDIS_ADDR"),
-	})
-
-	defer rdb.Close()
+	redisClient := message.NewRedisClient(os.Getenv("REDIS_ADDR"))
+	defer redisClient.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	spreadsheetsService := &sheets.SpreedSheetServiceMock{}
-	receiptsService := &receipts.ReceiptsServiceMock{}
-
+	spreadsheetsService := &api.SpreadsheetsMock{}
+	receiptsService := &api.ReceiptsMock{}
+	fileService := &api.FileServiceClientMock{}
+	deadNationservice := &api.DeadNationMock{}
+	conn, err := db.NewDBConn(os.Getenv("POSTGRES_URL"))
+	if err != nil {
+		panic(err)
+	}
 	go func() {
-		svc, err := events.NewRouter(
-			rdb,
-			receiptsService,
+		svc := service.New(
+			redisClient,
 			spreadsheetsService,
+			receiptsService,
+			fileService,
+			conn,
+			deadNationservice,
 		)
-		assert.Nil(t, err)
+
 		assert.NoError(t, svc.Run(ctx))
 	}()
+
 	waitForHttpServer(t)
+
 	ticket := TicketStatus{
 		TicketID: uuid.NewString(),
 		Status:   "confirmed",
@@ -49,27 +60,24 @@ func TestComponent(t *testing.T) {
 		Email:     "email@example.com",
 		BookingID: uuid.NewString(),
 	}
+
 	sendTicketsStatus(t, TicketsStatusRequest{Tickets: []TicketStatus{ticket}})
 
 	assertReceiptForTicketIssued(t, receiptsService, ticket)
 	assertRowToSheetAdded(t, spreadsheetsService, ticket, "tickets-to-print")
 
-	ticketCancel := TicketStatus{
-		TicketID: uuid.NewString(),
-		Status:   "canceled",
-		Price: Money{
-			Amount:   "50.30",
-			Currency: "GBP",
+	sendTicketsStatus(t, TicketsStatusRequest{Tickets: []TicketStatus{
+		{
+			TicketID: ticket.TicketID,
+			Status:   "canceled",
+			Email:    ticket.Email,
 		},
-		Email:     "email@example.com",
-		BookingID: uuid.NewString(),
-	}
-	sendTicketsStatus(t, TicketsStatusRequest{Tickets: []TicketStatus{ticketCancel}})
-	assertRowToSheetAdded(t, spreadsheetsService, ticketCancel, "tickets-to-refund")
+	}})
 
+	assertRowToSheetAdded(t, spreadsheetsService, ticket, "tickets-to-refund")
 }
 
-func assertRowToSheetAdded(t *testing.T, spreadsheetsService *sheets.SpreedSheetServiceMock, ticket TicketStatus, sheetName string) bool {
+func assertRowToSheetAdded(t *testing.T, spreadsheetsService *api.SpreadsheetsMock, ticket TicketStatus, sheetName string) bool {
 	return assert.EventuallyWithT(
 		t,
 		func(t *assert.CollectT) {
@@ -93,7 +101,7 @@ func assertRowToSheetAdded(t *testing.T, spreadsheetsService *sheets.SpreedSheet
 	)
 }
 
-func assertReceiptForTicketIssued(t *testing.T, receiptsService *receipts.ReceiptsServiceMock, ticket TicketStatus) {
+func assertReceiptForTicketIssued(t *testing.T, receiptsService *api.ReceiptsMock, ticket TicketStatus) {
 	assert.EventuallyWithT(
 		t,
 		func(collectT *assert.CollectT) {
@@ -106,7 +114,7 @@ func assertReceiptForTicketIssued(t *testing.T, receiptsService *receipts.Receip
 		100*time.Millisecond,
 	)
 
-	var receipt receipts.IssueReceiptRequest
+	var receipt entities.IssueReceiptRequest
 	var ok bool
 	for _, issuedReceipt := range receiptsService.IssuedReceipts {
 		if issuedReceipt.TicketID != ticket.TicketID {
@@ -121,6 +129,52 @@ func assertReceiptForTicketIssued(t *testing.T, receiptsService *receipts.Receip
 	assert.Equal(t, ticket.TicketID, receipt.TicketID)
 	assert.Equal(t, ticket.Price.Amount, receipt.Price.Amount)
 	assert.Equal(t, ticket.Price.Currency, receipt.Price.Currency)
+}
+
+type TicketsStatusRequest struct {
+	Tickets []TicketStatus `json:"tickets"`
+}
+
+type TicketStatus struct {
+	TicketID  string `json:"ticket_id"`
+	Status    string `json:"status"`
+	Price     Money  `json:"price"`
+	Email     string `json:"email"`
+	BookingID string `json:"booking_id"`
+}
+
+type Money struct {
+	Amount   string `json:"amount"`
+	Currency string `json:"currency"`
+}
+
+func sendTicketsStatus(t *testing.T, req TicketsStatusRequest) {
+	t.Helper()
+
+	payload, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	correlationID := shortuuid.New()
+
+	ticketIDs := make([]string, 0, len(req.Tickets))
+	for _, ticket := range req.Tickets {
+		ticketIDs = append(ticketIDs, ticket.TicketID)
+	}
+
+	httpReq, err := http.NewRequest(
+		http.MethodPost,
+		"http://localhost:8080/tickets-status",
+		bytes.NewBuffer(payload),
+	)
+	require.NoError(t, err)
+
+	httpReq.Header.Set("Correlation-ID", correlationID)
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Idempotency-Key", uuid.NewString())
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
 func waitForHttpServer(t *testing.T) {
