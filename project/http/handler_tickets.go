@@ -80,7 +80,7 @@ func (h *Handler) PutTicketRefund(c echo.Context) error {
 	if ticketId == "" {
 		return fmt.Errorf("ticket id not provided")
 	}
-	cmd := entities.RefundTicket{
+	cmd := entities.TicketRefunded{
 		Header:   entities.NewEventHeaderWithIdempotencyKey(ticketId),
 		TicketID: ticketId,
 	}

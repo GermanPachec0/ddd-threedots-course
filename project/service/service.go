@@ -61,6 +61,7 @@ func New(
 
 	eventProcessorConfig := event.NewProcessorConfig(redisClient, watermillLogger)
 	commandProccessorConfig := command.NewCommandProcessorConfig(redisClient, watermillLogger)
+	opsReadModel := db.NewOpsBookingReadModel(&conn)
 
 	pgSubscriber := outbox.SubscribeForPGMessages(conn.Conn, watermillLogger)
 	watermillRouter := message.NewWatermillRouter(
@@ -70,6 +71,7 @@ func New(
 		eventProcessorConfig,
 		commandsHandler,
 		eventsHandler,
+		opsReadModel,
 		watermillLogger,
 	)
 

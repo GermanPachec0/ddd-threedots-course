@@ -14,8 +14,8 @@ type SpreadsheetsAPI interface {
 
 type ReceiptsService interface {
 	IssueReceipt(ctx context.Context, request entities.IssueReceiptRequest) (entities.IssueReceiptResponse, error)
-	RefundVoidReceipts(ctx context.Context, cmd entities.RefundTicket) error
-	RefundPayment(ctx context.Context, cmd entities.RefundTicket) error
+	RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded) error
+	RefundPayment(ctx context.Context, cmd entities.TicketRefunded) error
 }
 type ShowRepository interface {
 	ShowByID(ctx context.Context, showID uuid.UUID) (entities.Show, error)

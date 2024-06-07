@@ -1,6 +1,7 @@
 package message
 
 import (
+	"tickets/db"
 	"tickets/message/command"
 	"tickets/message/event"
 	"tickets/message/outbox"
@@ -17,6 +18,7 @@ func NewWatermillRouter(
 	eventProcessorConfig cqrs.EventProcessorConfig,
 	commandHandler command.Handler,
 	eventHandler event.Handler,
+	opsReadModel db.OpsBookingReadModel,
 	watermillLogger watermill.LoggerAdapter) *message.Router {
 	router, err := message.NewRouter(message.RouterConfig{}, watermillLogger)
 	if err != nil {
@@ -71,6 +73,26 @@ func NewWatermillRouter(
 		cqrs.NewEventHandler(
 			"BookPlaceInDeadNation",
 			eventHandler.BookTicketToDeadNotion,
+		),
+		cqrs.NewEventHandler(
+			"ops_read_model.OnBookingMade",
+			opsReadModel.OnBookingMade,
+		),
+		cqrs.NewEventHandler(
+			"ops_read_model.IssueReceiptHandler",
+			opsReadModel.OnTicketReceiptIssued,
+		),
+		cqrs.NewEventHandler(
+			"ops_read_model.OnTicketBookingConfirmed",
+			opsReadModel.OnTicketBookingConfirmed,
+		),
+		cqrs.NewEventHandler(
+			"ops_read_model.OnTicketPrinted",
+			opsReadModel.OnTicketPrinted,
+		),
+		cqrs.NewEventHandler(
+			"ops_read_model.OnTicketRefunded",
+			opsReadModel.OnTicketRefunded,
 		),
 	)
 

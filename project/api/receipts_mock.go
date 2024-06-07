@@ -5,6 +5,8 @@ import (
 	"sync"
 	"tickets/entities"
 	"time"
+
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
 type ReceiptsMock struct {
@@ -23,16 +25,23 @@ func (c *ReceiptsMock) IssueReceipt(ctx context.Context, request entities.IssueR
 	}, nil
 }
 
-func (c *ReceiptsMock) RefundPayment(ctx context.Context, cmd entities.RefundTicket) error {
+func (c *ReceiptsMock) RefundPayment(ctx context.Context, cmd entities.TicketRefunded) error {
 	c.mock.Lock()
 	defer c.mock.Lock()
 
 	return nil
 }
 
-func (c *ReceiptsMock) RefundVoidReceipts(ctx context.Context, cmd entities.RefundTicket) error {
+func (c *ReceiptsMock) RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded) error {
 	c.mock.Lock()
 	defer c.mock.Lock()
 
 	return nil
+}
+
+func (c *ReceiptsMock) SetEventBus(eventBus *cqrs.EventBus) {
+	c.mock.Lock()
+	defer c.mock.Lock()
+
+	return
 }

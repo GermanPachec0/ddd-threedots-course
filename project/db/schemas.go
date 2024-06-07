@@ -24,4 +24,9 @@ CREATE TABLE bookings (
     number_of_tickets INT NOT NULL,
     customer_email VARCHAR(255) NOT NULL
 );
+CREATE TABLE IF NOT EXISTS read_model_ops_bookings (
+    booking_id UUID PRIMARY KEY,
+    payload JSONB NOT NULL
+);
+
 `

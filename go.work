@@ -23,5 +23,6 @@ use (
 	./11-outbox/06-publishing-event-for-forwarder
 	./11-outbox/07-forwarding-with-outbox
 	./12-cqrs-commands/01-command-vs-event
+	./13-read-models/02-building-read-models
 	./project
 )
