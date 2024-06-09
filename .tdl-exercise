@@ -1,3 +1,3 @@
-exercise_id = "72366b90-768f-49d0-bed3-2a9f343ad349"
-directory = "project"
+exercise_id = "f947744a-b640-4abe-8e62-ceb93cef7ed2"
+directory = "14-message-ordering/03-partition-per-entity"
 is_text_only = false

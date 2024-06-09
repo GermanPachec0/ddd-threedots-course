@@ -73,12 +73,12 @@ type TicketReceiptIssued struct {
 }
 
 type OpsBooking struct {
-	BookingID uuid.UUID `json:"booking_id"`
-	BookedAt  time.Time `json:"booked_at"`
+	BookingID uuid.UUID `json:"booking_id" db:"booking_id"`
+	BookedAt  time.Time `json:"booked_at" db:"booked_at" `
 
-	Tickets map[string]OpsTicket `json:"tickets"`
+	Tickets map[string]OpsTicket `json:"tickets" db:"tickets"`
 
-	LastUpdate time.Time `json:"last_update"`
+	LastUpdate time.Time `json:"last_update" db:"last_update"`
 }
 
 type OpsTicket struct {

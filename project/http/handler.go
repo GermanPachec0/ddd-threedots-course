@@ -15,6 +15,7 @@ type Handler struct {
 	ticketRepo            TicketRepository
 	showRepo              ShowRepository
 	bookingRepo           BookingRespository
+	opsBookingRepo        OpsBookingRepository
 }
 
 type SpreadsheetsAPI interface {
@@ -32,4 +33,9 @@ type ShowRepository interface {
 
 type BookingRespository interface {
 	Create(ctx context.Context, booking entities.Booking) (entities.BookingCreateResponse, error)
+}
+
+type OpsBookingRepository interface {
+	GetAll(ctx context.Context, query *string) ([]entities.OpsBooking, error)
+	GetByID(ctx context.Context, bookingID string) (entities.OpsBooking, error)
 }

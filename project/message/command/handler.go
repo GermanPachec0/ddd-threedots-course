@@ -3,6 +3,8 @@ package command
 import (
 	"context"
 	"tickets/entities"
+
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
 type ReceiptsService interface {
@@ -11,14 +13,21 @@ type ReceiptsService interface {
 }
 type Handler struct {
 	receiptsService ReceiptsService
+	eventBus        *cqrs.EventBus
 }
 
-func NewHandler(receiptsService ReceiptsService) Handler {
-	if receiptsService == nil {
-		panic("missin spreedsheetsService")
+func NewHandler(eventBus *cqrs.EventBus, receiptsServiceClient ReceiptsService) Handler {
+	if eventBus == nil {
+		panic("eventBus is required")
+	}
+	if receiptsServiceClient == nil {
+		panic("receiptsServiceClient is required")
 	}
 
-	return Handler{
-		receiptsService: receiptsService,
+	handler := Handler{
+		eventBus:        eventBus,
+		receiptsService: receiptsServiceClient,
 	}
+
+	return handler
 }

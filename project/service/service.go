@@ -57,7 +57,7 @@ func New(
 		deadNotionService,
 		showRepository,
 	)
-	commandsHandler := command.NewHandler(receiptsService)
+	commandsHandler := command.NewHandler(eventBus, receiptsService)
 
 	eventProcessorConfig := event.NewProcessorConfig(redisClient, watermillLogger)
 	commandProccessorConfig := command.NewCommandProcessorConfig(redisClient, watermillLogger)
@@ -82,6 +82,7 @@ func New(
 		ticketRepo,
 		showRepo,
 		bookingRepo,
+		opsReadModel,
 	)
 
 	return Service{
