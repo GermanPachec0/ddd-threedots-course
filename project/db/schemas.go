@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS tickets (
 	ticket_id UUID PRIMARY KEY,
 	price_amount NUMERIC(10, 2) NOT NULL,
 	price_currency CHAR(3) NOT NULL,
-	customer_email VARCHAR(255) NOT NULL
+	customer_email VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMPTZ
 );
 
 CREATE TABLE shows (
@@ -27,6 +28,13 @@ CREATE TABLE bookings (
 CREATE TABLE IF NOT EXISTS read_model_ops_bookings (
     booking_id UUID PRIMARY KEY,
     payload JSONB NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS events (
+    event_id UUID PRIMARY KEY,
+    published_at TIMESTAMP NOT NULL,
+    event_name VARCHAR(255) NOT NULL,
+    event_payload JSONB NOT NULL
 );
 
 `

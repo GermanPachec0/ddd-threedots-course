@@ -66,8 +66,10 @@ func main() {
 	}
 
 	pub, err := kafka.NewPublisher(kafka.PublisherConfig{
-		Brokers:   []string{kafkaAddr},
-		Marshaler: nil, // TODO
+		Brokers: []string{kafkaAddr},
+		Marshaler: kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.Message) (string, error) {
+			return msg.Metadata.Get("player_id"), nil
+		}),
 	}, logger)
 	if err != nil {
 		panic(err)

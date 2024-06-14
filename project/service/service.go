@@ -59,19 +59,23 @@ func New(
 	)
 	commandsHandler := command.NewHandler(eventBus, receiptsService)
 
+	redisSubscriber := message.NewRedisSubscriber(redisClient, watermillLogger)
 	eventProcessorConfig := event.NewProcessorConfig(redisClient, watermillLogger)
 	commandProccessorConfig := command.NewCommandProcessorConfig(redisClient, watermillLogger)
 	opsReadModel := db.NewOpsBookingReadModel(&conn)
+	dataLakeRepo := db.NewEventRepository(&conn)
 
 	pgSubscriber := outbox.SubscribeForPGMessages(conn.Conn, watermillLogger)
 	watermillRouter := message.NewWatermillRouter(
 		pgSubscriber,
+		redisSubscriber,
 		commandProccessorConfig,
 		redisPublisher,
 		eventProcessorConfig,
 		commandsHandler,
 		eventsHandler,
 		opsReadModel,
+		dataLakeRepo,
 		watermillLogger,
 	)
 

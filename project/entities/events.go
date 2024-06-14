@@ -42,7 +42,7 @@ type TicketBookingCanceled struct {
 	Header EventHeader `json:"header"`
 
 	TicketID      string `json:"ticket_id" db:"ticket_id"`
-	CustomerEmail string `json:"customer_email" customer_email"`
+	CustomerEmail string `json:"customer_email" db:"customer_email"`
 	Price         Money  `json:"price" db:"price"`
 }
 
@@ -87,11 +87,20 @@ type OpsTicket struct {
 	CustomerEmail string `json:"customer_email"`
 
 	// Status should be set to "confirmed" or "refunded"
-	Status string `json:"status"`
+	ConfirmedAt time.Time `json:"confirmed_at"`
+	RefundedAt  time.Time `json:"refunded_at"`
 
 	PrintedAt       time.Time `json:"printed_at"`
 	PrintedFileName string    `json:"printed_file_name"`
 
 	ReceiptIssuedAt time.Time `json:"receipt_issued_at"`
 	ReceiptNumber   string    `json:"receipt_number"`
+}
+
+type Event struct {
+	Header       EventHeader `json:"header"`
+	EventID      string      `json:"event_id" db:"event_id"`
+	PublishedAt  time.Time   `json:"published_at" db:"published_at"`
+	EventName    string      `json:"event_name" db:"event_name"`
+	EventPayload string      `json:"event_payload" db:"event_payload"`
 }

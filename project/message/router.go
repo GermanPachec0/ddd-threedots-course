@@ -1,7 +1,9 @@
 package message
 
 import (
+	"fmt"
 	"tickets/db"
+	"tickets/entities"
 	"tickets/message/command"
 	"tickets/message/event"
 	"tickets/message/outbox"
@@ -13,12 +15,14 @@ import (
 
 func NewWatermillRouter(
 	pgSubscriber message.Subscriber,
+	redisSub message.Subscriber,
 	commandProccesorConfig cqrs.CommandProcessorConfig,
 	publisher message.Publisher,
 	eventProcessorConfig cqrs.EventProcessorConfig,
 	commandHandler command.Handler,
 	eventHandler event.Handler,
 	opsReadModel db.OpsBookingReadModel,
+	dataLake db.EventRepository,
 	watermillLogger watermill.LoggerAdapter) *message.Router {
 	router, err := message.NewRouter(message.RouterConfig{}, watermillLogger)
 	if err != nil {
@@ -95,6 +99,37 @@ func NewWatermillRouter(
 			opsReadModel.OnTicketRefunded,
 		),
 	)
+	router.AddNoPublisherHandler(
+		"events_splitter",
+		"events",
+		redisSub,
+		func(msg *message.Message) error {
+			eventName := eventProcessorConfig.Marshaler.NameFromMessage(msg)
+			if eventName == "" {
+				return fmt.Errorf("cannot get event name from message")
+			}
+			return publisher.Publish("events."+eventName, msg)
+		},
+	)
 
+	router.AddNoPublisherHandler(
+		"events_data_lake",
+		"events",
+		redisSub,
+		func(msg *message.Message) error {
+			var event entities.Event
+			eventName := eventProcessorConfig.Marshaler.NameFromMessage(msg)
+			if eventName == "" {
+				return fmt.Errorf("cannot get event name from message")
+			}
+			if err := eventProcessorConfig.Marshaler.Unmarshal(msg, &event); err != nil {
+				return fmt.Errorf("cannot unmarshal event: %w", err)
+			}
+			event.EventName = eventName
+			event.EventPayload = string(msg.Payload)
+			event.EventID = event.Header.ID
+			return dataLake.Create(msg.Context(), event)
+		},
+	)
 	return router
 }

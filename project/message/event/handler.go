@@ -23,6 +23,7 @@ type ShowRepository interface {
 type TicketRepository interface {
 	Create(ctx context.Context, ticket entities.Ticket) error
 	Delete(ctx context.Context, ticket entities.Ticket) error
+	Update(ctx context.Context, ticket entities.Ticket) error
 }
 
 type FileService interface {

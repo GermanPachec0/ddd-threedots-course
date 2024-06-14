@@ -26,5 +26,7 @@ use (
 	./13-read-models/02-building-read-models
 	./14-message-ordering/02-one-topic
 	./14-message-ordering/03-partition-per-entity
+	./14-message-ordering/04-versioning-entities
+	./14-message-ordering/05-independent-updates
 	./project
 )
