@@ -91,7 +91,7 @@ func (br BookingRepository) Create(ctx context.Context, booking entities.Booking
 	if err != nil {
 		return entities.BookingCreateResponse{}, fmt.Errorf("error creating event outbox publisher %w", err)
 	}
-	err = event.NewBus(outBoxPuslisher).Publish(ctx, entities.BookingMade{
+	err = event.NewBus(outBoxPuslisher).Publish(ctx, entities.BookingMade_v1{
 		Header:          entities.NewEventHeader(),
 		BookingID:       booking.BookingID,
 		NumberOfTickets: booking.NumberOfTickets,

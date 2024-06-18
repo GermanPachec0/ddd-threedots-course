@@ -10,20 +10,23 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/go-event-driven/common/log"
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/jmoiron/sqlx"
 )
 
 type OpsBookingReadModel struct {
-	conn *sqlx.DB
+	eventBus *cqrs.EventBus
+	conn     *sqlx.DB
 }
 
-func NewOpsBookingReadModel(db *DB) OpsBookingReadModel {
+func NewOpsBookingReadModel(db *DB, eventBus *cqrs.EventBus) OpsBookingReadModel {
 	return OpsBookingReadModel{
-		conn: db.Conn,
+		conn:     db.Conn,
+		eventBus: eventBus,
 	}
 }
 
-func (r OpsBookingReadModel) GetAll(ctx context.Context, date *string) ([]entities.OpsBooking, error) {
+func (r OpsBookingReadModel) GetAll(ctx context.Context, date *string) ([]entities.OpsBooking_v1, error) {
 	query := "SELECT payload FROM read_model_ops_bookings"
 	var quaryArgs []any
 
@@ -48,14 +51,14 @@ func (r OpsBookingReadModel) GetAll(ctx context.Context, date *string) ([]entiti
 	}
 	defer rows.Close()
 
-	var result []entities.OpsBooking
+	var result []entities.OpsBooking_v1
 	for rows.Next() {
 		var payload []byte
 		if err := rows.Scan(&payload); err != nil {
 			return nil, err
 		}
 
-		var booking entities.OpsBooking
+		var booking entities.OpsBooking_v1
 		if err := json.Unmarshal(payload, &booking); err != nil {
 			return nil, err
 		}
@@ -65,7 +68,7 @@ func (r OpsBookingReadModel) GetAll(ctx context.Context, date *string) ([]entiti
 	return result, nil
 }
 
-func (r OpsBookingReadModel) GetByID(ctx context.Context, bookingID string) (entities.OpsBooking, error) {
+func (r OpsBookingReadModel) GetByID(ctx context.Context, bookingID string) (entities.OpsBooking_v1, error) {
 	var bookingPayload []byte
 
 	err := r.conn.QueryRowContext(
@@ -74,22 +77,22 @@ func (r OpsBookingReadModel) GetByID(ctx context.Context, bookingID string) (ent
 		bookingID,
 	).Scan(&bookingPayload)
 	if err != nil {
-		return entities.OpsBooking{}, err
+		return entities.OpsBooking_v1{}, err
 	}
 
-	var booking entities.OpsBooking
+	var booking entities.OpsBooking_v1
 
 	err = json.Unmarshal(bookingPayload, &booking)
 	if err != nil {
-		return entities.OpsBooking{}, err
+		return entities.OpsBooking_v1{}, err
 	}
 
 	return booking, nil
 }
 
-func (r OpsBookingReadModel) OnBookingMade(ctx context.Context, bookingMade *entities.BookingMade) error {
+func (r OpsBookingReadModel) OnBookingMade(ctx context.Context, bookingMade *entities.BookingMade_v1) error {
 	// this is the first event that should arrive, so we create the read model
-	err := r.createReadModel(ctx, entities.OpsBooking{
+	err := r.createReadModel(ctx, entities.OpsBooking_v1{
 		BookingID:  bookingMade.BookingID,
 		Tickets:    nil,
 		LastUpdate: time.Now(),
@@ -101,15 +104,15 @@ func (r OpsBookingReadModel) OnBookingMade(ctx context.Context, bookingMade *ent
 
 	return nil
 }
-func (r OpsBookingReadModel) OnTicketBookingConfirmed(ctx context.Context, event *entities.TicketBookingConfirmed) error {
+func (r OpsBookingReadModel) OnTicketBookingConfirmed(ctx context.Context, event *entities.TicketBookingConfirmed_v1) error {
 	return r.updateBookingReadModel(
 		ctx,
 		event.BookingID,
-		func(rm entities.OpsBooking) (entities.OpsBooking, error) {
+		func(rm entities.OpsBooking_v1) (entities.OpsBooking_v1, error) {
 
 			ticket, ok := rm.Tickets[event.TicketID]
 			if !ok {
-				// we are using zero-value of OpsTicket
+				// we are using zero-value of OpsTicket_v1
 				log.
 					FromContext(ctx).
 					WithField("ticket_id", event.TicketID).
@@ -127,11 +130,11 @@ func (r OpsBookingReadModel) OnTicketBookingConfirmed(ctx context.Context, event
 		},
 	)
 }
-func (r OpsBookingReadModel) OnTicketReceiptIssued(ctx context.Context, issued *entities.TicketReceiptIssued) error {
+func (r OpsBookingReadModel) OnTicketReceiptIssued(ctx context.Context, issued *entities.TicketReceiptIssued_v1) error {
 	return r.updateTicketInBookingReadModel(
 		ctx,
 		issued.TicketID,
-		func(rm entities.OpsTicket) (entities.OpsTicket, error) {
+		func(rm entities.OpsTicket_v1) (entities.OpsTicket_v1, error) {
 			rm.ReceiptIssuedAt = issued.IssuedAt
 			rm.ReceiptNumber = issued.ReceiptNumber
 
@@ -140,11 +143,11 @@ func (r OpsBookingReadModel) OnTicketReceiptIssued(ctx context.Context, issued *
 	)
 }
 
-func (r OpsBookingReadModel) OnTicketPrinted(ctx context.Context, event *entities.TicketPrinted) error {
+func (r OpsBookingReadModel) OnTicketPrinted(ctx context.Context, event *entities.TicketPrinted_v1) error {
 	return r.updateTicketInBookingReadModel(
 		ctx,
 		event.TicketID,
-		func(rm entities.OpsTicket) (entities.OpsTicket, error) {
+		func(rm entities.OpsTicket_v1) (entities.OpsTicket_v1, error) {
 			rm.PrintedAt = time.Now()
 			rm.PrintedFileName = event.FileName
 			return rm, nil
@@ -152,11 +155,11 @@ func (r OpsBookingReadModel) OnTicketPrinted(ctx context.Context, event *entitie
 	)
 }
 
-func (r OpsBookingReadModel) OnTicketRefunded(ctx context.Context, event *entities.TicketRefunded) error {
+func (r OpsBookingReadModel) OnTicketRefunded(ctx context.Context, event *entities.TicketRefunded_v1) error {
 	return r.updateTicketInBookingReadModel(
 		ctx,
 		event.TicketID,
-		func(rm entities.OpsTicket) (entities.OpsTicket, error) {
+		func(rm entities.OpsTicket_v1) (entities.OpsTicket_v1, error) {
 			rm.RefundedAt = event.Header.PublishedAt
 
 			return rm, nil
@@ -164,7 +167,7 @@ func (r OpsBookingReadModel) OnTicketRefunded(ctx context.Context, event *entiti
 	)
 }
 
-func (r OpsBookingReadModel) createReadModel(ctx context.Context, opsBooking entities.OpsBooking) error {
+func (r OpsBookingReadModel) createReadModel(ctx context.Context, opsBooking entities.OpsBooking_v1) error {
 	payload, err := json.Marshal(opsBooking)
 	if err != nil {
 		return err
@@ -188,7 +191,7 @@ func (r OpsBookingReadModel) createReadModel(ctx context.Context, opsBooking ent
 func (r OpsBookingReadModel) updateTicketInBookingReadModel(
 	ctx context.Context,
 	ticketID string,
-	updateFunc func(ticket entities.OpsTicket) (entities.OpsTicket, error),
+	updateFunc func(ticket entities.OpsTicket_v1) (entities.OpsTicket_v1, error),
 ) (err error) {
 	return updateInTx(
 		ctx,
@@ -219,7 +222,7 @@ func (r OpsBookingReadModel) updateTicketInBookingReadModel(
 
 func (r OpsBookingReadModel) updateBookingReadModel(ctx context.Context,
 	bookingID string,
-	updateFunc func(ticket entities.OpsBooking) (entities.OpsBooking, error),
+	updateFunc func(ticket entities.OpsBooking_v1) (entities.OpsBooking_v1, error),
 ) error {
 	return updateInTx(ctx,
 		r.conn,
@@ -246,7 +249,7 @@ func (r OpsBookingReadModel) updateBookingReadModel(ctx context.Context,
 func (r OpsBookingReadModel) updateReadModel(
 	ctx context.Context,
 	tx *sqlx.Tx,
-	rm entities.OpsBooking,
+	rm entities.OpsBooking_v1,
 ) error {
 	rm.LastUpdate = time.Now()
 
@@ -266,10 +269,13 @@ func (r OpsBookingReadModel) updateReadModel(
 		return fmt.Errorf("could not update read model: %w", err)
 	}
 
-	return nil
+	return r.eventBus.Publish(ctx, &entities.InternalOpsReadModelUpdated{
+		Header:    entities.NewEventHeader(),
+		BookingID: rm.BookingID,
+	})
 }
 
-func (r OpsBookingReadModel) findModelByBookingID(ctx context.Context, bookingID string, tx *sqlx.Tx) (entities.OpsBooking, error) {
+func (r OpsBookingReadModel) findModelByBookingID(ctx context.Context, bookingID string, tx *sqlx.Tx) (entities.OpsBooking_v1, error) {
 	var payload []byte
 
 	err := r.conn.QueryRowContext(
@@ -278,7 +284,7 @@ func (r OpsBookingReadModel) findModelByBookingID(ctx context.Context, bookingID
 		bookingID,
 	).Scan(&payload)
 	if err != nil {
-		return entities.OpsBooking{}, err
+		return entities.OpsBooking_v1{}, err
 	}
 
 	return r.unmarshalReadModelFromDB(payload)
@@ -289,7 +295,7 @@ func (r OpsBookingReadModel) findReadModelByTicketID(
 	ctx context.Context,
 	ticketID string,
 	db dbExecutor,
-) (entities.OpsBooking, error) {
+) (entities.OpsBooking_v1, error) {
 	var payload []byte
 
 	err := db.QueryRowContext(
@@ -298,22 +304,22 @@ func (r OpsBookingReadModel) findReadModelByTicketID(
 		ticketID,
 	).Scan(&payload)
 	if err != nil {
-		return entities.OpsBooking{}, err
+		return entities.OpsBooking_v1{}, err
 	}
 
 	return r.unmarshalReadModelFromDB(payload)
 }
 
-func (r OpsBookingReadModel) unmarshalReadModelFromDB(payload []byte) (entities.OpsBooking, error) {
-	var opsReadModel entities.OpsBooking
+func (r OpsBookingReadModel) unmarshalReadModelFromDB(payload []byte) (entities.OpsBooking_v1, error) {
+	var opsReadModel entities.OpsBooking_v1
 
 	err := json.Unmarshal(payload, &opsReadModel)
 	if err != nil {
-		return entities.OpsBooking{}, err
+		return entities.OpsBooking_v1{}, err
 	}
 
 	if opsReadModel.Tickets == nil {
-		opsReadModel.Tickets = map[string]entities.OpsTicket{}
+		opsReadModel.Tickets = map[string]entities.OpsTicket_v1{}
 	}
 	return opsReadModel, nil
 }

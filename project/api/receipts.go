@@ -23,7 +23,7 @@ func NewReceiptsServiceClient(clients *clients.Clients) *ReceiptsServiceClient {
 	return &ReceiptsServiceClient{clients: clients}
 }
 
-func (c ReceiptsServiceClient) RefundPayment(ctx context.Context, cmd entities.TicketRefunded) error {
+func (c ReceiptsServiceClient) RefundPayment(ctx context.Context, cmd entities.TicketRefunded_v1) error {
 	resp, err := c.clients.Payments.PutRefundsWithResponse(ctx,
 		payments.PaymentRefundRequest{
 			// we are using TicketID as a payment reference
@@ -40,7 +40,7 @@ func (c ReceiptsServiceClient) RefundPayment(ctx context.Context, cmd entities.T
 	return nil
 }
 
-func (c ReceiptsServiceClient) RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded) error {
+func (c ReceiptsServiceClient) RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded_v1) error {
 	resp, err := c.clients.Receipts.PutVoidReceiptWithResponse(ctx,
 		receipts.VoidReceiptRequest{
 			Reason:       "customer requested refund",

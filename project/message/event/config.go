@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"tickets/entities"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
@@ -17,7 +18,20 @@ var marshaler = cqrs.JSONMarshaler{
 func NewProcessorConfig(redisClient *redis.Client, watermillLogger watermill.LoggerAdapter) cqrs.EventProcessorConfig {
 	return cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-			return fmt.Sprintf("events.%s", params.EventName), nil
+			handlerEvent := params.EventHandler.NewEvent()
+			event, ok := handlerEvent.(entities.IEvent)
+
+			if !ok {
+				return "", fmt.Errorf("invalid event type: %T doesn't implement entities.Event", handlerEvent)
+			}
+			var prefix string
+			if event.IsInternal() {
+				prefix = "internal-events.svc-tickets."
+			} else {
+				prefix = "events."
+			}
+
+			return fmt.Sprintf(prefix + params.EventName), nil
 		},
 		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return redisstream.NewSubscriber(redisstream.SubscriberConfig{

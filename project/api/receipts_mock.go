@@ -25,14 +25,14 @@ func (c *ReceiptsMock) IssueReceipt(ctx context.Context, request entities.IssueR
 	}, nil
 }
 
-func (c *ReceiptsMock) RefundPayment(ctx context.Context, cmd entities.TicketRefunded) error {
+func (c *ReceiptsMock) RefundPayment(ctx context.Context, cmd entities.TicketRefunded_v1) error {
 	c.mock.Lock()
 	defer c.mock.Lock()
 
 	return nil
 }
 
-func (c *ReceiptsMock) RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded) error {
+func (c *ReceiptsMock) RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded_v1) error {
 	c.mock.Lock()
 	defer c.mock.Lock()
 

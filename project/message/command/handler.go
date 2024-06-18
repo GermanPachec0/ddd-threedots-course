@@ -8,8 +8,8 @@ import (
 )
 
 type ReceiptsService interface {
-	RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded) error
-	RefundPayment(ctx context.Context, cmd entities.TicketRefunded) error
+	RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded_v1) error
+	RefundPayment(ctx context.Context, cmd entities.TicketRefunded_v1) error
 }
 type Handler struct {
 	receiptsService ReceiptsService

@@ -6,7 +6,7 @@ import (
 	"tickets/entities"
 )
 
-func (h *Handler) BookTicketToDeadNotion(ctx context.Context, event *entities.BookingMade) error {
+func (h *Handler) BookTicketToDeadNotion(ctx context.Context, event *entities.BookingMade_v1) error {
 	show, err := h.showRepo.ShowByID(ctx, event.ShowId)
 	if err != nil {
 		return fmt.Errorf("failed to get show: %w", err)

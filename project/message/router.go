@@ -126,8 +126,9 @@ func NewWatermillRouter(
 				return fmt.Errorf("cannot unmarshal event: %w", err)
 			}
 			event.EventName = eventName
-			event.EventPayload = string(msg.Payload)
+			event.EventPayload = msg.Payload
 			event.EventID = event.Header.ID
+
 			return dataLake.Create(msg.Context(), event)
 		},
 	)

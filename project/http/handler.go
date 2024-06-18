@@ -36,6 +36,6 @@ type BookingRespository interface {
 }
 
 type OpsBookingRepository interface {
-	GetAll(ctx context.Context, query *string) ([]entities.OpsBooking, error)
-	GetByID(ctx context.Context, bookingID string) (entities.OpsBooking, error)
+	GetAll(ctx context.Context, query *string) ([]entities.OpsBooking_v1, error)
+	GetByID(ctx context.Context, bookingID string) (entities.OpsBooking_v1, error)
 }

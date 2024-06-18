@@ -28,7 +28,7 @@ func NewEventHeaderWithIdempotencyKey(idempotencyKey string) EventHeader {
 	}
 }
 
-type TicketBookingConfirmed struct {
+type TicketBookingConfirmed_v1 struct {
 	Header EventHeader `json:"header"`
 
 	TicketID      string `json:"ticket_id" db:"ticket_id"`
@@ -38,7 +38,7 @@ type TicketBookingConfirmed struct {
 	BookingID string `json:"booking_id"`
 }
 
-type TicketBookingCanceled struct {
+type TicketBookingCanceled_v1 struct {
 	Header EventHeader `json:"header"`
 
 	TicketID      string `json:"ticket_id" db:"ticket_id"`
@@ -46,7 +46,7 @@ type TicketBookingCanceled struct {
 	Price         Money  `json:"price" db:"price"`
 }
 
-type BookingMade struct {
+type BookingMade_v1 struct {
 	Header EventHeader `json:"header"`
 
 	NumberOfTickets int `json:"number_of_tickets"`
@@ -56,14 +56,14 @@ type BookingMade struct {
 	CustomerEmail string    `json:"customer_email"`
 	ShowId        uuid.UUID `json:"show_id"`
 }
-type TicketPrinted struct {
+type TicketPrinted_v1 struct {
 	Header EventHeader `json:"header"`
 
 	TicketID string `json:"ticket_id"`
 	FileName string `json:"file_name"`
 }
 
-type TicketReceiptIssued struct {
+type TicketReceiptIssued_v1 struct {
 	Header EventHeader `json:"header"`
 
 	TicketID      string `json:"ticket_id"`
@@ -72,16 +72,16 @@ type TicketReceiptIssued struct {
 	IssuedAt time.Time `json:"issued_at"`
 }
 
-type OpsBooking struct {
+type OpsBooking_v1 struct {
 	BookingID uuid.UUID `json:"booking_id" db:"booking_id"`
 	BookedAt  time.Time `json:"booked_at" db:"booked_at" `
 
-	Tickets map[string]OpsTicket `json:"tickets" db:"tickets"`
+	Tickets map[string]OpsTicket_v1 `json:"tickets" db:"tickets"`
 
 	LastUpdate time.Time `json:"last_update" db:"last_update"`
 }
 
-type OpsTicket struct {
+type OpsTicket_v1 struct {
 	PriceAmount   string `json:"price_amount"`
 	PriceCurrency string `json:"price_currency"`
 	CustomerEmail string `json:"customer_email"`
@@ -102,5 +102,39 @@ type Event struct {
 	EventID      string      `json:"event_id" db:"event_id"`
 	PublishedAt  time.Time   `json:"published_at" db:"published_at"`
 	EventName    string      `json:"event_name" db:"event_name"`
-	EventPayload string      `json:"event_payload" db:"event_payload"`
+	EventPayload []byte      `json:"event_payload" db:"event_payload"`
+}
+
+type IEvent interface {
+	IsInternal() bool
+}
+
+func (i Event) IsInternal() bool {
+	return false
+}
+
+func (i TicketBookingCanceled_v1) IsInternal() bool {
+	return false
+}
+
+func (i TicketBookingConfirmed_v1) IsInternal() bool {
+	return false
+}
+
+func (i TicketPrinted_v1) IsInternal() bool {
+	return false
+}
+func (i TicketReceiptIssued_v1) IsInternal() bool {
+	return false
+}
+
+func (i TicketRefunded_v1) IsInternal() bool {
+	return false
+}
+func (i OpsTicket_v1) IsInternal() bool {
+	return false
+}
+
+func (i BookingMade_v1) IsInternal() bool {
+	return false
 }

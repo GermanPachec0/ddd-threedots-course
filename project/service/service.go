@@ -8,6 +8,7 @@ import (
 	"tickets/message/command"
 	"tickets/message/event"
 	"tickets/message/outbox"
+	"tickets/migrations"
 
 	"github.com/ThreeDotsLabs/go-event-driven/common/log"
 	watermillMessage "github.com/ThreeDotsLabs/watermill/message"
@@ -24,6 +25,8 @@ func init() {
 type Service struct {
 	watermillRouter *watermillMessage.Router
 	echoRouter      *echo.Echo
+	dataLakeRepo    db.IEventRepository
+	readModel       db.OpsBookingReadModel
 }
 
 func New(
@@ -62,8 +65,8 @@ func New(
 	redisSubscriber := message.NewRedisSubscriber(redisClient, watermillLogger)
 	eventProcessorConfig := event.NewProcessorConfig(redisClient, watermillLogger)
 	commandProccessorConfig := command.NewCommandProcessorConfig(redisClient, watermillLogger)
-	opsReadModel := db.NewOpsBookingReadModel(&conn)
-	dataLakeRepo := db.NewEventRepository(&conn)
+	opsReadModel := db.NewOpsBookingReadModel(&conn, eventBus)
+	dataLakeRepo := db.NewEventRepository(&conn, eventBus)
 
 	pgSubscriber := outbox.SubscribeForPGMessages(conn.Conn, watermillLogger)
 	watermillRouter := message.NewWatermillRouter(
@@ -88,10 +91,11 @@ func New(
 		bookingRepo,
 		opsReadModel,
 	)
-
 	return Service{
 		watermillRouter,
 		echoRouter,
+		dataLakeRepo,
+		opsReadModel,
 	}
 }
 
@@ -104,6 +108,14 @@ func (s Service) Run(
 		return s.watermillRouter.Run(ctx)
 	})
 
+	go func() {
+		err := migrations.MigrateToReadBookingReadModel(ctx, s.dataLakeRepo, s.readModel)
+		if err != nil {
+			log.FromContext(ctx).Errorf("failed to migrate read model: %v", err)
+
+			panic(err)
+		}
+	}()
 	errgrp.Go(func() error {
 		// we don't want to start HTTP server before Watermill router (so service won't be healthy before it's ready)
 		<-s.watermillRouter.Running()

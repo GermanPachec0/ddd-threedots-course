@@ -5,22 +5,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"tickets/entities"
+
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
 type IEventRepository interface {
 	Create(ctx context.Context, event entities.Event) error
+	GetAll(ctx context.Context) ([]entities.Event, error)
 }
 
 type EventRepository struct {
-	db *DB
+	db       *DB
+	eventBus *cqrs.EventBus
 }
 
-func NewEventRepository(db *DB) EventRepository {
+func NewEventRepository(db *DB, eventBus *cqrs.EventBus) EventRepository {
 	if db == nil {
 		panic("db is nil")
 	}
 	return EventRepository{
-		db: db,
+		db:       db,
+		eventBus: eventBus,
 	}
 }
 
@@ -42,4 +47,13 @@ func (e EventRepository) Create(ctx context.Context, event entities.Event) error
 	}
 
 	return nil
+}
+
+func (e EventRepository) GetAll(ctx context.Context) ([]entities.Event, error) {
+	var events []entities.Event
+	err := e.db.Conn.SelectContext(ctx, &events, "SELECT * FROM events ORDER BY published_at ASC")
+	if err != nil {
+		return nil, fmt.Errorf("error getting all events %w", err)
+	}
+	return events, nil
 }
