@@ -28,5 +28,15 @@ use (
 	./14-message-ordering/03-partition-per-entity
 	./14-message-ordering/04-versioning-entities
 	./14-message-ordering/05-independent-updates
+	./19-tracing/01-tracing
+	./19-tracing/02-tracing-attributes
+	./19-tracing/03-propagating-tracing-in-message
+	./19-tracing/04-tracing-with-outbox
+	./20-fault-tolerance/02-throttling
+	./20-fault-tolerance/03-circuit-breaker
+	./20-fault-tolerance/04-poison-queue
+	./21-sagas-and-process-managers/02-removing-sagas
+	./21-sagas-and-process-managers/03-modeling-process-manager
+	./poison-queue-cli
 	./project
 )

@@ -13,6 +13,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+var (
+	ErrBookingAlreadyExists = errors.New("booking already exists")
+)
+
 type IBookingRepository interface {
 	Create(ctx context.Context, booking entities.Booking) (entities.BookingCreateResponse, error)
 }

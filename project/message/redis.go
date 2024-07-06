@@ -1,6 +1,8 @@
 package message
 
 import (
+	observability "tickets/trace"
+
 	"github.com/ThreeDotsLabs/go-event-driven/common/log"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
@@ -18,7 +20,10 @@ func NewRedisPublisher(rdb *redis.Client, watermillLogger watermill.LoggerAdapte
 	}
 	pub = log.CorrelationPublisherDecorator{pub}
 
-	return pub
+	pubTracer := observability.TracingPublisherDecorator{
+		Publisher: pub,
+	}
+	return pubTracer
 }
 func NewRedisSubscriber(rdb *redis.Client, watermillLogger watermill.LoggerAdapter) message.Subscriber {
 	sub, err := redisstream.NewSubscriber(redisstream.SubscriberConfig{

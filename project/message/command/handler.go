@@ -13,10 +13,15 @@ type ReceiptsService interface {
 }
 type Handler struct {
 	receiptsService ReceiptsService
-	eventBus        *cqrs.EventBus
+	bookingsRepo    BookingsRepository
+
+	eventBus *cqrs.EventBus
+}
+type BookingsRepository interface {
+	Create(ctx context.Context, booking entities.Booking) (entities.BookingCreateResponse, error)
 }
 
-func NewHandler(eventBus *cqrs.EventBus, receiptsServiceClient ReceiptsService) Handler {
+func NewHandler(eventBus *cqrs.EventBus, receiptsServiceClient ReceiptsService, bookingsRepo BookingsRepository) Handler {
 	if eventBus == nil {
 		panic("eventBus is required")
 	}
@@ -27,6 +32,7 @@ func NewHandler(eventBus *cqrs.EventBus, receiptsServiceClient ReceiptsService) 
 	handler := Handler{
 		eventBus:        eventBus,
 		receiptsService: receiptsServiceClient,
+		bookingsRepo:    bookingsRepo,
 	}
 
 	return handler

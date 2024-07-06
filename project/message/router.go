@@ -7,6 +7,7 @@ import (
 	"tickets/message/command"
 	"tickets/message/event"
 	"tickets/message/outbox"
+	"tickets/message/sagas"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
@@ -23,7 +24,9 @@ func NewWatermillRouter(
 	eventHandler event.Handler,
 	opsReadModel db.OpsBookingReadModel,
 	dataLake db.EventRepository,
-	watermillLogger watermill.LoggerAdapter) *message.Router {
+	watermillLogger watermill.LoggerAdapter,
+	vipBundleProcessManager *sagas.VipBundleProcessManager,
+) *message.Router {
 	router, err := message.NewRouter(message.RouterConfig{}, watermillLogger)
 	if err != nil {
 		panic(err)
@@ -42,12 +45,19 @@ func NewWatermillRouter(
 
 	cmdProccessor, err := cqrs.NewCommandProcessorWithConfig(router, commandProccesorConfig)
 
-	cmdProccessor.AddHandlers(
+	err = cmdProccessor.AddHandlers(
 		cqrs.NewCommandHandler(
-			"HandlefundTicket",
+			"TicketRefund",
 			commandHandler.RefundTicket,
 		),
+		cqrs.NewCommandHandler(
+			"BookShowTickets",
+			commandHandler.BookShowTickets,
+		),
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	eventProcessor.AddHandlers(
 		cqrs.NewEventHandler(
@@ -97,6 +107,34 @@ func NewWatermillRouter(
 		cqrs.NewEventHandler(
 			"ops_read_model.OnTicketRefunded",
 			opsReadModel.OnTicketRefunded,
+		),
+		cqrs.NewEventHandler(
+			"vip_bundle_process_manager.OnVipBundleInitialized",
+			vipBundleProcessManager.OnVipBundleInitialized,
+		),
+		cqrs.NewEventHandler(
+			"vip_bundle_process_manager.OnBookingMade",
+			vipBundleProcessManager.OnBookingMade,
+		),
+		cqrs.NewEventHandler(
+			"vip_bundle_process_manager.OnBookingFailed",
+			vipBundleProcessManager.OnBookingFailed,
+		),
+		cqrs.NewEventHandler(
+			"vip_bundle_process_manager.OnFlightBooked",
+			vipBundleProcessManager.OnFlightBooked,
+		),
+		cqrs.NewEventHandler(
+			"vip_bundle_process_manager.OnFlightBookingFailed",
+			vipBundleProcessManager.OnFlightBookingFailed,
+		),
+		cqrs.NewEventHandler(
+			"vip_bundle_process_manager.OnTaxiBooked",
+			vipBundleProcessManager.OnTaxiBooked,
+		),
+		cqrs.NewEventHandler(
+			"vip_bundle_process_manager.OnTaxiBookingFailed",
+			vipBundleProcessManager.OnTaxiBookingFailed,
 		),
 	)
 	router.AddNoPublisherHandler(

@@ -8,13 +8,15 @@ import (
 	"tickets/message/command"
 	"tickets/message/event"
 	"tickets/message/outbox"
-	"tickets/migrations"
+	"tickets/message/sagas"
+	observability "tickets/trace"
 
 	"github.com/ThreeDotsLabs/go-event-driven/common/log"
 	watermillMessage "github.com/ThreeDotsLabs/watermill/message"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,6 +29,7 @@ type Service struct {
 	echoRouter      *echo.Echo
 	dataLakeRepo    db.IEventRepository
 	readModel       db.OpsBookingReadModel
+	traceProvider   *tracesdk.TracerProvider
 }
 
 func New(
@@ -37,12 +40,13 @@ func New(
 	conn db.DB,
 	deadNotionService event.DeadNationService,
 ) Service {
+	traceConfig := observability.ConfigureTraceProvider()
 	watermillLogger := log.NewWatermill(log.FromContext(context.Background()))
 
 	var redisPublisher watermillMessage.Publisher
 	redisPublisher = message.NewRedisPublisher(redisClient, watermillLogger)
 	redisPublisher = log.CorrelationPublisherDecorator{Publisher: redisPublisher}
-
+	redisPublisher = observability.TracingPublisherDecorator{Publisher: redisPublisher}
 	eventBus := event.NewBus(redisPublisher)
 	commandBus := command.NewCommandBus(redisPublisher)
 
@@ -50,6 +54,7 @@ func New(
 	showRepo := db.NewShowRepository(&conn)
 	bookingRepo := db.NewBookingRespository(&conn)
 	showRepository := db.NewShowRepository(&conn)
+	bundleRepo := db.NewVipBundleRepository(conn.Conn)
 
 	eventsHandler := event.NewHandler(
 		spreadsheetsService,
@@ -60,7 +65,9 @@ func New(
 		deadNotionService,
 		showRepository,
 	)
-	commandsHandler := command.NewHandler(eventBus, receiptsService)
+	commandsHandler := command.NewHandler(eventBus, receiptsService, bookingRepo)
+
+	vipBundleProcessManager := sagas.NewVipBundleProcessManager(commandBus, eventBus, bundleRepo)
 
 	redisSubscriber := message.NewRedisSubscriber(redisClient, watermillLogger)
 	eventProcessorConfig := event.NewProcessorConfig(redisClient, watermillLogger)
@@ -80,6 +87,7 @@ func New(
 		opsReadModel,
 		dataLakeRepo,
 		watermillLogger,
+		vipBundleProcessManager,
 	)
 
 	echoRouter := ticketsHttp.NewHttpRouter(
@@ -90,32 +98,28 @@ func New(
 		showRepo,
 		bookingRepo,
 		opsReadModel,
+		bundleRepo,
 	)
+
 	return Service{
 		watermillRouter,
 		echoRouter,
 		dataLakeRepo,
 		opsReadModel,
+		traceConfig,
 	}
 }
 
 func (s Service) Run(
 	ctx context.Context,
 ) error {
+
 	errgrp, ctx := errgroup.WithContext(ctx)
 
 	errgrp.Go(func() error {
 		return s.watermillRouter.Run(ctx)
 	})
 
-	go func() {
-		err := migrations.MigrateToReadBookingReadModel(ctx, s.dataLakeRepo, s.readModel)
-		if err != nil {
-			log.FromContext(ctx).Errorf("failed to migrate read model: %v", err)
-
-			panic(err)
-		}
-	}()
 	errgrp.Go(func() error {
 		// we don't want to start HTTP server before Watermill router (so service won't be healthy before it's ready)
 		<-s.watermillRouter.Running()
@@ -134,5 +138,8 @@ func (s Service) Run(
 		return s.echoRouter.Shutdown(context.Background())
 	})
 
+	errgrp.Go(func() error {
+		return s.traceProvider.Shutdown(context.Background())
+	})
 	return errgrp.Wait()
 }

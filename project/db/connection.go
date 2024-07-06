@@ -1,8 +1,12 @@
 package db
 
 import (
+	"os"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/uptrace/opentelemetry-go-extra/otelsql"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 type DB struct {
@@ -10,10 +14,14 @@ type DB struct {
 }
 
 func NewDBConn(connString string) (DB, error) {
-	db, err := sqlx.Open("postgres", connString)
+	traceDB, err := otelsql.Open("postgres", os.Getenv("POSTGRES_URL"),
+		otelsql.WithAttributes(semconv.DBSystemPostgreSQL),
+		otelsql.WithDBName("db"))
 	if err != nil {
-		return DB{}, err
+		panic(err)
 	}
+
+	db := sqlx.NewDb(traceDB, "postgres")
 
 	return DB{Conn: db}, nil
 }

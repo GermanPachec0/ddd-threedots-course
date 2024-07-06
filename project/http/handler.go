@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"tickets/entities"
+	"tickets/message/sagas"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ type Handler struct {
 	showRepo              ShowRepository
 	bookingRepo           BookingRespository
 	opsBookingRepo        OpsBookingRepository
+	vipBundleRepo         VipBundleRepository
 }
 
 type SpreadsheetsAPI interface {
@@ -33,6 +35,10 @@ type ShowRepository interface {
 
 type BookingRespository interface {
 	Create(ctx context.Context, booking entities.Booking) (entities.BookingCreateResponse, error)
+}
+
+type VipBundleRepository interface {
+	Add(ctx context.Context, vipBundle sagas.VipBundle) error
 }
 
 type OpsBookingRepository interface {
