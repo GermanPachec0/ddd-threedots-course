@@ -52,6 +52,8 @@ func main() {
 	receiptsService := api.NewReceiptsServiceClient(apiClients)
 	fileService := api.NewFileServiceClient(apiClients)
 	deadNotionService := api.NewDeadNotionClient(apiClients)
+	transportationService := api.NewTransportationClient(apiClients)
+	paymentsService := api.NewPaymentsServiceClient(apiClients)
 
 	err = service.New(
 		redisClient,
@@ -60,6 +62,8 @@ func main() {
 		fileService,
 		database,
 		deadNotionService,
+		transportationService,
+		paymentsService,
 	).Run(ctx)
 	if err != nil {
 		panic(err)

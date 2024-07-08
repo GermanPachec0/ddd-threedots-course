@@ -24,6 +24,11 @@ func init() {
 	log.Init(logrus.InfoLevel)
 }
 
+type ReceiptService interface {
+	event.ReceiptsService
+	command.ReceiptsService
+}
+
 type Service struct {
 	watermillRouter *watermillMessage.Router
 	echoRouter      *echo.Echo
@@ -35,10 +40,12 @@ type Service struct {
 func New(
 	redisClient *redis.Client,
 	spreadsheetsService event.SpreadsheetsAPI,
-	receiptsService event.ReceiptsService,
+	receiptsService ReceiptService,
 	fileService event.FileService,
 	conn db.DB,
 	deadNotionService event.DeadNationService,
+	transportaionService command.TransportationService,
+	paymentsService command.PaymentsService,
 ) Service {
 	traceConfig := observability.ConfigureTraceProvider()
 	watermillLogger := log.NewWatermill(log.FromContext(context.Background()))
@@ -65,7 +72,7 @@ func New(
 		deadNotionService,
 		showRepository,
 	)
-	commandsHandler := command.NewHandler(eventBus, receiptsService, bookingRepo)
+	commandsHandler := command.NewHandler(eventBus, receiptsService, bookingRepo, transportaionService, commandBus, paymentsService)
 
 	vipBundleProcessManager := sagas.NewVipBundleProcessManager(commandBus, eventBus, bundleRepo)
 

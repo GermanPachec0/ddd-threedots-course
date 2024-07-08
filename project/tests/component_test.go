@@ -31,6 +31,8 @@ func TestComponent(t *testing.T) {
 	receiptsService := &api.ReceiptsMock{}
 	fileService := &api.FileServiceClientMock{}
 	deadNationservice := &api.DeadNationMock{}
+	transportationService := &api.Transportation{}
+	paymentsService := &api.PaymentsServiceClient{}
 	conn, err := db.NewDBConn(os.Getenv("POSTGRES_URL"))
 	if err != nil {
 		panic(err)
@@ -43,6 +45,8 @@ func TestComponent(t *testing.T) {
 			fileService,
 			conn,
 			deadNationservice,
+			transportationService,
+			paymentsService,
 		)
 
 		assert.NoError(t, svc.Run(ctx))

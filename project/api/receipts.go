@@ -40,19 +40,20 @@ func (c ReceiptsServiceClient) RefundPayment(ctx context.Context, cmd entities.T
 	return nil
 }
 
-func (c ReceiptsServiceClient) RefundVoidReceipts(ctx context.Context, cmd entities.TicketRefunded_v1) error {
-	resp, err := c.clients.Receipts.PutVoidReceiptWithResponse(ctx,
-		receipts.VoidReceiptRequest{
-			Reason:       "customer requested refund",
-			IdempotentId: &cmd.Header.IdempotencyKey,
-			TicketId:     cmd.TicketID,
-		})
-
+func (c ReceiptsServiceClient) VoidReceipt(ctx context.Context, request entities.VoidReceipt) error {
+	resp, err := c.clients.Receipts.PutVoidReceiptWithResponse(ctx, receipts.VoidReceiptRequest{
+		Reason:       request.Reason,
+		TicketId:     request.TicketID,
+		IdempotentId: &request.IdempotencyKey,
+	})
 	if err != nil {
-		return fmt.Errorf("Error refunding void receipt %w", err)
+		return fmt.Errorf("failed to post void receipt: %w", err)
 	}
 
-	slog.Info("response %w", resp)
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("unexpected status code for POST receipts-api/receipts/void: %d", resp.StatusCode())
+	}
+
 	return nil
 }
 

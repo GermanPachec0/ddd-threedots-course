@@ -10,7 +10,7 @@ import (
 func (h Handler) DeleteTicketCancel(ctx context.Context, event *entities.TicketBookingCanceled_v1) error {
 	log.FromContext(ctx).Info("Removing cancel ticket")
 
-	return h.ticketRepo.Update(ctx, entities.Ticket{
+	return h.ticketRepo.Delete(ctx, entities.Ticket{
 		TicketID:      event.TicketID,
 		Price:         event.Price,
 		CustomerEmail: event.CustomerEmail,

@@ -15,6 +15,7 @@ import (
 
 var (
 	ErrBookingAlreadyExists = errors.New("booking already exists")
+	ErrNoPlacesLeft         = errors.New("no places left")
 )
 
 type IBookingRepository interface {

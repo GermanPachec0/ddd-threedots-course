@@ -1,6 +1,12 @@
 package entities
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
+
+var ErrNoFlightTicketsAvailable = fmt.Errorf("no flight tickets available")
 
 type TicketRefunded_v1 struct {
 	Header EventHeader `json:"header"`

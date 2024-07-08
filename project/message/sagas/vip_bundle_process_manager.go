@@ -6,6 +6,7 @@ import (
 	"tickets/entities"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/google/uuid"
 )
 
@@ -101,23 +102,16 @@ type VipBundleRepository interface {
 		updateFn func(vipBundle VipBundle) (VipBundle, error),
 	) (VipBundle, error)
 }
-type CommandBus interface {
-	Send(ctx context.Context, command any) error
-}
-
-type EventBus interface {
-	Publish(ctx context.Context, event any) error
-}
 
 type VipBundleProcessManager struct {
-	commandBus CommandBus
-	eventBus   EventBus
+	commandBus *cqrs.CommandBus
+	eventBus   *cqrs.EventBus
 	repository VipBundleRepository
 }
 
 func NewVipBundleProcessManager(
-	commandBus CommandBus,
-	eventBus EventBus,
+	commandBus *cqrs.CommandBus,
+	eventBus *cqrs.EventBus,
 	repository VipBundleRepository,
 ) *VipBundleProcessManager {
 	return &VipBundleProcessManager{
@@ -172,7 +166,6 @@ func (v VipBundleProcessManager) OnTicketBookingConfirmed(ctx context.Context, e
 
 			for _, ticketID := range vipBundle.TicketIDs {
 				if ticketID == eventTicketID {
-					// re-delivery (already stored)
 					continue
 				}
 			}
@@ -195,7 +188,7 @@ func (v VipBundleProcessManager) OnBookingFailed(ctx context.Context, event *ent
 		return err
 	}
 
-	return v.rollback(ctx, vb.VipBundleID)
+	return v.rollbackProcess(ctx, vb.VipBundleID)
 }
 
 func (v VipBundleProcessManager) OnFlightBooked(ctx context.Context, event *entities.FlightBooked_v1) error {
@@ -243,12 +236,10 @@ func (v VipBundleProcessManager) OnFlightBooked(ctx context.Context, event *enti
 			vb.ReturnFlightBookedAt,
 		)
 	}
-
 }
 
 func (v VipBundleProcessManager) OnFlightBookingFailed(ctx context.Context, event *entities.FlightBookingFailed_v1) error {
-	return v.rollback(ctx, uuid.MustParse(event.ReferenceID))
-
+	return v.rollbackProcess(ctx, uuid.MustParse(event.ReferenceID))
 }
 
 func (v VipBundleProcessManager) OnTaxiBooked(ctx context.Context, event *entities.TaxiBooked_v1) error {
@@ -275,18 +266,17 @@ func (v VipBundleProcessManager) OnTaxiBooked(ctx context.Context, event *entiti
 }
 
 func (v VipBundleProcessManager) OnTaxiBookingFailed(ctx context.Context, event *entities.TaxiBookingFailed_v1) error {
-	return v.rollback(ctx, uuid.MustParse(event.ReferenceID))
-
+	return v.rollbackProcess(ctx, uuid.MustParse(event.ReferenceID))
 }
 
-func (v VipBundleProcessManager) rollback(ctx context.Context, vipBundleID uuid.UUID) error {
+func (v VipBundleProcessManager) rollbackProcess(ctx context.Context, vipBundleID uuid.UUID) error {
 	vb, err := v.repository.Get(ctx, vipBundleID)
 	if err != nil {
 		return err
 	}
 
 	if vb.BookingMadeAt != nil {
-		if err := v.rollBacktickets(ctx, vb); err != nil {
+		if err := v.rollbackTickets(ctx, vb); err != nil {
 			return err
 		}
 	}
@@ -318,18 +308,16 @@ func (v VipBundleProcessManager) rollback(ctx context.Context, vipBundleID uuid.
 	return err
 }
 
-func (v VipBundleProcessManager) rollBacktickets(ctx context.Context, vipBundle VipBundle) error {
-
-	if len(vipBundle.TicketIDs) != vipBundle.NumberOfTickets {
+func (v VipBundleProcessManager) rollbackTickets(ctx context.Context, vb VipBundle) error {
+	if len(vb.TicketIDs) != vb.NumberOfTickets {
 		return fmt.Errorf(
-			"invalid number of tickets, expected %d, has %d: "+
-				"not all of TicketBookingConfirmed_v1 events were processed",
-			vipBundle.NumberOfTickets,
-			len(vipBundle.TicketIDs),
+			"invalid number of tickets, expected %d, has %d: not all of TicketBookingConfirmed_v1 events were processed",
+			vb.NumberOfTickets,
+			len(vb.TicketIDs),
 		)
 	}
 
-	for _, ticketID := range vipBundle.TicketIDs {
+	for _, ticketID := range vb.TicketIDs {
 		if err := v.commandBus.Send(ctx, entities.RefundTicket{
 			Header:   entities.NewEventHeader(),
 			TicketID: ticketID.String(),

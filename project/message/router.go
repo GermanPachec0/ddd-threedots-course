@@ -50,16 +50,33 @@ func NewWatermillRouter(
 			"TicketRefund",
 			commandHandler.RefundTicket,
 		),
+
 		cqrs.NewCommandHandler(
 			"BookShowTickets",
 			commandHandler.BookShowTickets,
+		),
+		cqrs.NewCommandHandler(
+			"BookFlight",
+			commandHandler.BookFlight,
+		),
+		cqrs.NewCommandHandler(
+			"BookTaxi",
+			commandHandler.BookTaxi,
+		),
+		cqrs.NewCommandHandler(
+			"CancelFlightTickets",
+			commandHandler.CancelFlightTickets,
 		),
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	eventProcessor.AddHandlers(
+	err = eventProcessor.AddHandlers(
+		cqrs.NewEventHandler(
+			"BookPlaceInDeadNation",
+			eventHandler.BookTicketToDeadNotion,
+		),
 		cqrs.NewEventHandler(
 			"AppendToTracker",
 			eventHandler.AppendToTracker,
@@ -73,20 +90,16 @@ func NewWatermillRouter(
 			eventHandler.IssueReceipt,
 		),
 		cqrs.NewEventHandler(
-			"SaveTicketInDB",
-			eventHandler.StoreTickets,
-		),
-		cqrs.NewEventHandler(
-			"DeleteCancelTicketsInDB",
-			eventHandler.DeleteTicketCancel,
-		),
-		cqrs.NewEventHandler(
-			"SaveTicketInFile",
+			"PrintTicketHandler",
 			eventHandler.StoreTicketsInFile,
 		),
 		cqrs.NewEventHandler(
-			"BookPlaceInDeadNation",
-			eventHandler.BookTicketToDeadNotion,
+			"StoreTickets",
+			eventHandler.StoreTickets,
+		),
+		cqrs.NewEventHandler(
+			"RemoveCanceledTicket",
+			eventHandler.DeleteTicketCancel,
 		),
 		cqrs.NewEventHandler(
 			"ops_read_model.OnBookingMade",
@@ -117,6 +130,10 @@ func NewWatermillRouter(
 			vipBundleProcessManager.OnBookingMade,
 		),
 		cqrs.NewEventHandler(
+			"vip_bundle_process_manager.OnTicketBookingConfirmed",
+			vipBundleProcessManager.OnTicketBookingConfirmed,
+		),
+		cqrs.NewEventHandler(
 			"vip_bundle_process_manager.OnBookingFailed",
 			vipBundleProcessManager.OnBookingFailed,
 		),
@@ -137,6 +154,11 @@ func NewWatermillRouter(
 			vipBundleProcessManager.OnTaxiBookingFailed,
 		),
 	)
+
+	if err != nil {
+		panic(err)
+	}
+
 	router.AddNoPublisherHandler(
 		"events_splitter",
 		"events",
